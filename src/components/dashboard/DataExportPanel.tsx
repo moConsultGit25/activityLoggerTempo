@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -20,36 +20,71 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowUpDown, Check, Clock, RefreshCw, Settings } from "lucide-react";
 
+import { ProcessingStatus } from "@/domain/engagement/interfaces";
+
 interface DataExportPanelProps {
   lastSyncTime?: string;
-  syncStatus?: "idle" | "syncing" | "completed" | "failed";
+  syncStatus?: ProcessingStatus;
   selectedCrm?: string;
+  onCrmChange?: (crm: string) => void;
+  onSyncClick?: () => void;
+  progress?: number;
 }
 
 const DataExportPanel = ({
   lastSyncTime = "Never",
   syncStatus = "idle",
   selectedCrm = "salesforce",
+  onCrmChange,
+  onSyncClick,
+  progress = 0,
 }: DataExportPanelProps) => {
   const [crm, setCrm] = useState(selectedCrm);
   const [status, setStatus] = useState(syncStatus);
-  const [progress, setProgress] = useState(0);
+
+  // Update local state when props change
+  useEffect(() => {
+    setStatus(syncStatus);
+  }, [syncStatus]);
+
+  useEffect(() => {
+    setCrm(selectedCrm);
+  }, [selectedCrm]);
+
+  const handleCrmChange = (value: string) => {
+    setCrm(value);
+    if (onCrmChange) {
+      onCrmChange(value);
+    }
+  };
 
   const handleSync = () => {
-    setStatus("syncing");
-    setProgress(0);
+    if (onSyncClick) {
+      onSyncClick();
+    } else {
+      // Fallback to the original simulation if no onSyncClick is provided
+      setStatus("processing");
 
-    // Simulate progress
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
+      // Simulate processing and then syncing to CRM
+      // First phase (0-50%): Processing data internally
+      // Second phase (50-100%): Syncing processed data to CRM
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += 5;
+
+        if (currentProgress >= 50 && currentProgress < 51) {
+          // At 50%, we've completed internal processing and start CRM sync
+          console.log("Internal processing complete, starting CRM sync");
+          setStatus("syncing");
+        }
+
+        if (currentProgress >= 100) {
           clearInterval(interval);
           setStatus("completed");
-          return 100;
+          currentProgress = 100;
         }
-        return prev + 10;
-      });
-    }, 500);
+      }, 300);
+    }
   };
 
   const getStatusBadge = () => {
@@ -72,14 +107,14 @@ const DataExportPanel = ({
           <div>
             <CardTitle>Data Export Controls</CardTitle>
             <CardDescription>
-              Sync your customer interaction data with CRM systems
+              Sync your processed interaction data with CRM systems
             </CardDescription>
           </div>
           {getStatusBadge()}
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue={crm} onValueChange={setCrm}>
+        <Tabs defaultValue={crm} onValueChange={handleCrmChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="salesforce">Salesforce</TabsTrigger>
             <TabsTrigger value="hubspot">HubSpot</TabsTrigger>
@@ -173,10 +208,17 @@ const DataExportPanel = ({
         {status === "syncing" && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Syncing data...</span>
+              <span className="text-sm font-medium">
+                {progress < 50 ? "Processing data..." : "Syncing to CRM..."}
+              </span>
               <span className="text-sm">{progress}%</span>
             </div>
             <Progress value={progress} />
+            <div className="text-xs text-muted-foreground">
+              {progress < 50
+                ? "Analyzing and preparing data for export"
+                : "Pushing processed data to CRM system"}
+            </div>
           </div>
         )}
       </CardContent>
@@ -202,7 +244,9 @@ const DataExportPanel = ({
             ) : (
               <RefreshCw className="h-4 w-4 mr-1" />
             )}
-            {status === "syncing" ? "Syncing..." : "Sync Now"}
+            {status === "syncing"
+              ? "Processing & Syncing..."
+              : "Process & Sync"}
           </Button>
         </div>
       </CardFooter>

@@ -12,10 +12,17 @@
 import {
   InteractionRepository,
   InteractionFilters,
+  ProcessingStatus,
 } from "../../domain/engagement/interfaces";
 import { Interaction } from "../../domain/engagement/types";
 export class InteractionApiAdapter implements InteractionRepository {
   private baseUrl: string;
+  private processingStatus: ProcessingStatus = "idle";
+  private processingProgress: number = 0;
+  private processingCallback?: (
+    status: ProcessingStatus,
+    progress: number,
+  ) => void;
 
   constructor(baseUrl: string = "/api/engagement/interactions") {
     this.baseUrl = baseUrl;
@@ -203,6 +210,105 @@ export class InteractionApiAdapter implements InteractionRepository {
     } catch (error) {
       console.error(`Error deleting interaction ${id}:`, error);
       throw error;
+    }
+  }
+
+  // Methods for handling the two-phase processing and sync process
+
+  /**
+   * Registers a callback to receive updates on processing status and progress
+   * @param callback Function to call with status and progress updates
+   */
+  registerProcessingCallback(
+    callback: (status: ProcessingStatus, progress: number) => void,
+  ): void {
+    this.processingCallback = callback;
+  }
+
+  /**
+   * Gets the current processing status
+   * @returns Current processing status and progress
+   */
+  getProcessingStatus(): { status: ProcessingStatus; progress: number } {
+    return { status: this.processingStatus, progress: this.processingProgress };
+  }
+
+  /**
+   * Initiates the two-phase process: internal processing followed by CRM sync
+   * @param crmType The CRM system to sync with (e.g., 'salesforce', 'hubspot')
+   * @param options Additional options for processing and syncing
+   * @returns Promise that resolves when processing and syncing are complete
+   */
+  async processAndSyncToCrm(
+    crmType: string,
+    options: Record<string, any> = {},
+  ): Promise<boolean> {
+    try {
+      // Update status to processing
+      this.updateStatus("processing", 0);
+
+      // Phase 1: Internal processing (0-50%)
+      await this.performInternalProcessing();
+
+      // Phase 2: CRM sync (50-100%)
+      await this.syncProcessedDataToCrm(crmType, options);
+
+      // Update status to completed
+      this.updateStatus("completed", 100);
+
+      return true;
+    } catch (error) {
+      console.error("Error during processing and sync:", error);
+      this.updateStatus("failed", this.processingProgress);
+      throw error;
+    }
+  }
+
+  /**
+   * Performs internal processing of interaction data
+   * @private
+   */
+  private async performInternalProcessing(): Promise<void> {
+    // In a real implementation, this would process the data internally
+    // For now, we'll simulate processing with a delay
+
+    for (let progress = 0; progress <= 50; progress += 5) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      this.updateStatus("processing", progress);
+    }
+  }
+
+  /**
+   * Syncs processed data to the specified CRM system
+   * @param crmType The CRM system to sync with
+   * @param options Additional options for syncing
+   * @private
+   */
+  private async syncProcessedDataToCrm(
+    crmType: string,
+    options: Record<string, any>,
+  ): Promise<void> {
+    // In a real implementation, this would sync the data to the CRM
+    // For now, we'll simulate syncing with a delay
+
+    for (let progress = 50; progress <= 95; progress += 5) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      this.updateStatus("syncing", progress);
+    }
+  }
+
+  /**
+   * Updates the processing status and notifies the callback if registered
+   * @param status New processing status
+   * @param progress Current progress percentage
+   * @private
+   */
+  private updateStatus(status: ProcessingStatus, progress: number): void {
+    this.processingStatus = status;
+    this.processingProgress = progress;
+
+    if (this.processingCallback) {
+      this.processingCallback(status, progress);
     }
   }
 }

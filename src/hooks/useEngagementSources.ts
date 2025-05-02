@@ -11,7 +11,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { EngagementSourceRepository } from "../domain/engagement/interfaces";
+import {
+  EngagementSourceRepository,
+  ConnectionHealthStatus,
+} from "../domain/engagement/interfaces";
 import { EngagementSource, SourceType } from "../domain/engagement/types";
 import { EngagementSourceApiAdapter } from "../infrastructure/api/EngagementSourceApiAdapter";
 
@@ -24,6 +27,22 @@ interface SourceStatus {
   email: ConnectionStatus;
   social: ConnectionStatus;
   recording: ConnectionStatus;
+}
+
+// Error message tracking for all source types
+interface SourceErrors {
+  phone: string | null;
+  email: string | null;
+  social: string | null;
+  recording: string | null;
+}
+
+// Health status tracking for all source types
+interface SourceHealth {
+  phone: ConnectionHealthStatus | null;
+  email: ConnectionHealthStatus | null;
+  social: ConnectionHealthStatus | null;
+  recording: ConnectionHealthStatus | null;
 }
 
 /**
@@ -81,6 +100,22 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
     email: "disconnected",
     social: "disconnected",
     recording: "disconnected",
+  });
+
+  // State for tracking error messages
+  const [sourceErrors, setSourceErrors] = useState<SourceErrors>({
+    phone: null,
+    email: null,
+    social: null,
+    recording: null,
+  });
+
+  // State for tracking health status
+  const [sourceHealth, setSourceHealth] = useState<SourceHealth>({
+    phone: null,
+    email: null,
+    social: null,
+    recording: null,
   });
 
   // State for source-specific settings
@@ -162,6 +197,12 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
       [sourceType]: "connecting",
     }));
 
+    // Clear any previous errors
+    setSourceErrors((prev) => ({
+      ...prev,
+      [sourceType]: null,
+    }));
+
     try {
       // Find the source with this type
       const sourceToConnect = sources.find((s) => s.type === sourceType);
@@ -194,6 +235,9 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
         [sourceType]: "connected",
       }));
 
+      // Check health after connecting
+      await handleCheckHealth(sourceType);
+
       // Refresh sources to get updated data
       fetchSources();
     } catch (err) {
@@ -201,6 +245,119 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
       setSourceStatus((prev) => ({
         ...prev,
         [sourceType]: "error",
+      }));
+
+      // Set error message
+      setSourceErrors((prev) => ({
+        ...prev,
+        [sourceType]:
+          err instanceof Error
+            ? err.message
+            : `Failed to connect ${sourceType} source`,
+      }));
+    }
+  };
+
+  /**
+   * Handles disconnection attempt for a specific source type
+   * @param sourceType - Type of source to disconnect (phone, email, social, recording)
+   */
+  const handleDisconnect = async (sourceType: SourceType) => {
+    try {
+      // Find the source with this type
+      const sourceToDisconnect = sources.find((s) => s.type === sourceType);
+      if (!sourceToDisconnect) {
+        throw new Error(`No source found with type ${sourceType}`);
+      }
+
+      // Disconnect the source using the repository
+      await sourceRepository.disconnectSource(sourceToDisconnect.id);
+
+      setSourceStatus((prev) => ({
+        ...prev,
+        [sourceType]: "disconnected",
+      }));
+
+      // Clear health status and errors
+      setSourceHealth((prev) => ({
+        ...prev,
+        [sourceType]: null,
+      }));
+
+      setSourceErrors((prev) => ({
+        ...prev,
+        [sourceType]: null,
+      }));
+
+      // Refresh sources to get updated data
+      fetchSources();
+    } catch (err) {
+      console.error(`Error disconnecting ${sourceType} source:`, err);
+
+      // Set error message
+      setSourceErrors((prev) => ({
+        ...prev,
+        [sourceType]:
+          err instanceof Error
+            ? err.message
+            : `Failed to disconnect ${sourceType} source`,
+      }));
+    }
+  };
+
+  /**
+   * Checks the health of a specific source connection
+   * @param sourceType - Type of source to check (phone, email, social, recording)
+   */
+  const handleCheckHealth = async (sourceType: SourceType) => {
+    try {
+      // Find the source with this type
+      const sourceToCheck = sources.find((s) => s.type === sourceType);
+      if (!sourceToCheck || !sourceToCheck.isConnected) {
+        // If source doesn't exist or isn't connected, clear health status
+        setSourceHealth((prev) => ({
+          ...prev,
+          [sourceType]: null,
+        }));
+        return;
+      }
+
+      // Check health using the repository
+      const healthStatus = await sourceRepository.checkConnectionHealth(
+        sourceToCheck.id,
+      );
+
+      // Update health status
+      setSourceHealth((prev) => ({
+        ...prev,
+        [sourceType]: healthStatus,
+      }));
+
+      // Update connection status based on health
+      if (healthStatus.status === "error") {
+        setSourceStatus((prev) => ({
+          ...prev,
+          [sourceType]: "error",
+        }));
+
+        // Set error message
+        setSourceErrors((prev) => ({
+          ...prev,
+          [sourceType]:
+            healthStatus.message ||
+            `Connection health check failed for ${sourceType}`,
+        }));
+      }
+    } catch (err) {
+      console.error(`Error checking health of ${sourceType} source:`, err);
+
+      // Set error message
+      setSourceErrors((prev) => ({
+        ...prev,
+        [sourceType]:
+          err instanceof Error
+            ? err.message
+            : `Failed to check health of ${sourceType} source`,
       }));
     }
   };
@@ -255,11 +412,15 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
     loading,
     error,
     sourceStatus,
+    sourceErrors,
+    sourceHealth,
     phoneSettings,
     emailSettings,
     socialSettings,
     recordingSettings,
     handleConnect,
+    handleDisconnect,
+    handleCheckHealth,
     handlePhoneSettingChange,
     handleEmailSettingChange,
     handleSocialSettingChange,

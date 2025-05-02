@@ -9,7 +9,7 @@
  * and maintaining its own UI state internally.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Calendar,
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { Interaction } from "../../domain/engagement/types";
 
 /**
  * Component props and data interfaces
@@ -39,20 +40,16 @@ import { format } from "date-fns";
 
 /** Props for the TranscriptViewer component */
 interface TranscriptViewerProps {
-  transcripts?: Transcript[];
+  interactions?: Interaction[];
+  selectedInteraction?: Interaction | null;
+  loading?: boolean;
+  error?: string | null;
+  onSelectInteraction?: (id: string) => Promise<Interaction | null>;
+  setSelectedInteraction?: (interaction: Interaction | null) => void;
+  filterInteractions?: (filters: any) => Interaction[];
 }
 
-/** Represents a customer interaction transcript */
-interface Transcript {
-  id: string; // Unique identifier
-  customerName: string; // Name of the customer
-  date: Date; // When the interaction occurred
-  channel: "call" | "email" | "chat" | "text"; // Communication channel
-  content: string; // Full transcript content
-  highlights: Highlight[]; // Important moments in the transcript
-}
-
-/** Represents an important moment in a transcript */
+/** Represents a highlight in a transcript */
 interface Highlight {
   id: string; // Unique identifier
   type: "key_moment" | "commitment" | "concern"; // Type of highlight
@@ -63,18 +60,47 @@ interface Highlight {
 /**
  * TranscriptViewer component displays and allows interaction with customer conversation transcripts
  *
- * @param transcripts - Array of transcript data to display (defaults to mock data if not provided)
+ * @param interactions - Array of interaction data to display
+ * @param selectedInteraction - Currently selected interaction
+ * @param loading - Loading state
+ * @param error - Error message if any
+ * @param onSelectInteraction - Callback to select an interaction
+ * @param setSelectedInteraction - Callback to set the selected interaction
+ * @param filterInteractions - Function to filter interactions
  */
 const TranscriptViewer = ({
-  transcripts = mockTranscripts,
+  interactions = [],
+  selectedInteraction = null,
+  loading = false,
+  error = null,
+  onSelectInteraction = async () => null,
+  setSelectedInteraction = () => {},
+  filterInteractions = () => [],
 }: TranscriptViewerProps) => {
   // UI state management
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTranscript, setSelectedTranscript] =
-    useState<Transcript | null>(mockTranscripts[0]);
+
+  // Use mockTranscripts as fallback if no interactions are provided
+  const [displayInteractions, setDisplayInteractions] = useState<Interaction[]>(
+    interactions.length > 0 ? interactions : mockTranscripts,
+  );
+
+  // Update displayInteractions when interactions prop changes
+  useEffect(() => {
+    if (interactions.length > 0) {
+      setDisplayInteractions(interactions);
+    }
+  }, [interactions]);
+
+  // Set initial selected interaction if none is provided
+  useEffect(() => {
+    if (!selectedInteraction && displayInteractions.length > 0) {
+      setSelectedInteraction(displayInteractions[0]);
+    }
+  }, [selectedInteraction, displayInteractions, setSelectedInteraction]);
 
   /**
    * Updates the selected date filter
@@ -88,21 +114,19 @@ const TranscriptViewer = ({
    * Sets the currently selected transcript for detailed viewing
    * @param transcript - The transcript to display
    */
-  const handleTranscriptSelect = (transcript: Transcript) => {
-    setSelectedTranscript(transcript);
+  const handleTranscriptSelect = (transcript: Interaction) => {
+    setSelectedInteraction(transcript);
   };
 
   /**
    * Filters transcripts based on search query and selected date
    * Applies case-insensitive search across customer name and content
    */
-  const filteredTranscripts = transcripts.filter((transcript) => {
+  const filteredTranscripts = displayInteractions.filter((transcript) => {
     // Check if transcript matches search query
     const matchesSearch =
       !searchQuery || // If no search query, include all
-      transcript.customerName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
+      transcript.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       transcript.content.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Check if transcript matches selected date
@@ -128,7 +152,7 @@ const TranscriptViewer = ({
    */
   const renderHighlightedContent = (
     content: string,
-    highlights: Highlight[],
+    highlights: Highlight[] | undefined,
   ) => {
     // If no highlights, just return the plain content
     if (!highlights || !highlights.length) return <p>{content}</p>;
@@ -224,6 +248,26 @@ const TranscriptViewer = ({
     return <MessageSquare className="h-4 w-4" />;
   };
 
+  if (loading) {
+    return (
+      <Card className="w-full h-full bg-white">
+        <CardContent className="flex items-center justify-center h-full">
+          <p>Loading transcripts...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full h-full bg-white">
+        <CardContent className="flex items-center justify-center h-full">
+          <p className="text-red-500">Error: {error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full h-full bg-white">
       <CardHeader className="pb-2">
@@ -273,23 +317,23 @@ const TranscriptViewer = ({
                   filteredTranscripts.map((transcript) => (
                     <div
                       key={transcript.id}
-                      className={`p-2 border rounded-md cursor-pointer hover:bg-muted transition-colors ${selectedTranscript?.id === transcript.id ? "bg-muted" : ""}`}
+                      className={`p-2 border rounded-md cursor-pointer hover:bg-muted transition-colors ${selectedInteraction?.id === transcript.id ? "bg-muted" : ""}`}
                       onClick={() => handleTranscriptSelect(transcript)}
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-medium">
-                          {transcript.customerName}
+                          {transcript.customer}
                         </span>
                         <Badge
                           variant="outline"
                           className="flex items-center gap-1"
                         >
-                          {getChannelIcon(transcript.channel)}
-                          {transcript.channel}
+                          {getChannelIcon(transcript.type)}
+                          {transcript.type}
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        {format(transcript.date, "MMM d, yyyy")}
+                        {format(new Date(transcript.date), "MMM d, yyyy")}
                       </div>
                       <div className="text-sm truncate mt-1">
                         {transcript.content.substring(0, 60)}...
@@ -305,16 +349,19 @@ const TranscriptViewer = ({
             </ScrollArea>
           </div>
           <div className="md:col-span-2 border rounded-md overflow-hidden">
-            {selectedTranscript ? (
+            {selectedInteraction ? (
               <>
                 <div className="p-3 bg-muted flex justify-between items-center">
                   <div>
                     <h3 className="font-medium">
-                      {selectedTranscript.customerName}
+                      {selectedInteraction.customer}
                     </h3>
                     <div className="text-sm text-muted-foreground">
-                      {format(selectedTranscript.date, "MMMM d, yyyy h:mm a")} ·{" "}
-                      {selectedTranscript.channel}
+                      {format(
+                        new Date(selectedInteraction.date),
+                        "MMMM d, yyyy h:mm a",
+                      )}{" "}
+                      · {selectedInteraction.type}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -337,8 +384,8 @@ const TranscriptViewer = ({
                   <ScrollArea className="h-[290px]">
                     <TabsContent value="transcript" className="p-4 m-0">
                       {renderHighlightedContent(
-                        selectedTranscript.content,
-                        selectedTranscript.highlights,
+                        selectedInteraction.content,
+                        selectedInteraction.highlights as Highlight[],
                       )}
                     </TabsContent>
                     <TabsContent value="highlights" className="p-4 m-0">
@@ -349,8 +396,8 @@ const TranscriptViewer = ({
                             Key Moments
                           </h4>
                           <ul className="space-y-2">
-                            {selectedTranscript.highlights
-                              .filter((h) => h.type === "key_moment")
+                            {selectedInteraction.highlights
+                              ?.filter((h) => h.type === "key_moment")
                               .map((highlight) => (
                                 <li
                                   key={highlight.id}
@@ -367,8 +414,8 @@ const TranscriptViewer = ({
                             Commitments
                           </h4>
                           <ul className="space-y-2">
-                            {selectedTranscript.highlights
-                              .filter((h) => h.type === "commitment")
+                            {selectedInteraction.highlights
+                              ?.filter((h) => h.type === "commitment")
                               .map((highlight) => (
                                 <li
                                   key={highlight.id}
@@ -385,8 +432,8 @@ const TranscriptViewer = ({
                             Customer Concerns
                           </h4>
                           <ul className="space-y-2">
-                            {selectedTranscript.highlights
-                              .filter((h) => h.type === "concern")
+                            {selectedInteraction.highlights
+                              ?.filter((h) => h.type === "concern")
                               .map((highlight) => (
                                 <li
                                   key={highlight.id}
@@ -404,11 +451,7 @@ const TranscriptViewer = ({
                         <div>
                           <h4 className="font-medium mb-2">Summary</h4>
                           <p className="text-muted-foreground">
-                            This conversation covered product pricing, feature
-                            requests, and implementation timeline. The customer
-                            expressed interest in the enterprise plan but had
-                            concerns about the cost. We committed to providing a
-                            custom quote by next week.
+                            {selectedInteraction.summary}
                           </p>
                         </div>
                         <div>
@@ -416,21 +459,25 @@ const TranscriptViewer = ({
                           <div className="flex items-center">
                             <div className="w-full bg-muted rounded-full h-2.5">
                               <div
-                                className="bg-green-500 h-2.5 rounded-full"
-                                style={{ width: "70%" }}
+                                className={`h-2.5 rounded-full ${getSentimentColor(selectedInteraction.sentiment)}`}
+                                style={{
+                                  width: getSentimentPercentage(
+                                    selectedInteraction.sentiment,
+                                  ),
+                                }}
                               ></div>
                             </div>
                             <span className="ml-2 text-sm text-muted-foreground">
-                              Positive (70%)
+                              {getSentimentLabel(selectedInteraction.sentiment)}
                             </span>
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-medium mb-2">Next Steps</h4>
+                          <h4 className="font-medium mb-2">Action Items</h4>
                           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                            <li>Send custom pricing quote by Friday</li>
-                            <li>Schedule follow-up call next week</li>
-                            <li>Share documentation on API integration</li>
+                            {selectedInteraction.actionItems?.map(
+                              (item, index) => <li key={index}>{item}</li>,
+                            )}
                           </ul>
                         </div>
                       </div>
@@ -450,16 +497,65 @@ const TranscriptViewer = ({
   );
 };
 
+// Helper functions for sentiment display
+const getSentimentColor = (sentiment: string) => {
+  switch (sentiment) {
+    case "positive":
+      return "bg-green-500";
+    case "neutral":
+      return "bg-blue-500";
+    case "negative":
+      return "bg-red-500";
+    default:
+      return "bg-gray-500";
+  }
+};
+
+const getSentimentPercentage = (sentiment: string) => {
+  switch (sentiment) {
+    case "positive":
+      return "70%";
+    case "neutral":
+      return "50%";
+    case "negative":
+      return "30%";
+    default:
+      return "50%";
+  }
+};
+
+const getSentimentLabel = (sentiment: string) => {
+  switch (sentiment) {
+    case "positive":
+      return "Positive (70%)";
+    case "neutral":
+      return "Neutral (50%)";
+    case "negative":
+      return "Negative (30%)";
+    default:
+      return "Unknown";
+  }
+};
+
 /**
  * Mock transcript data for demonstration purposes
  * In a production environment, this would come from the InteractionRepository
  */
-const mockTranscripts: Transcript[] = [
+const mockTranscripts: Interaction[] = [
   {
     id: "1",
-    customerName: "Acme Corporation",
+    sourceId: "source-1",
+    type: "call",
+    customer: "Acme Corporation",
     date: new Date(2023, 5, 15, 14, 30),
-    channel: "call",
+    sentiment: "positive",
+    summary:
+      "This conversation covered product pricing, feature requests, and implementation timeline. The customer expressed interest in the enterprise plan but had concerns about the cost. We committed to providing a custom quote by next week.",
+    actionItems: [
+      "Send custom pricing quote by Friday",
+      "Schedule follow-up call next week",
+      "Share documentation on API integration",
+    ],
     content:
       "Customer: Hi, I wanted to discuss the pricing for your enterprise plan.\n\nAgent: Hello! I'd be happy to go over our enterprise pricing with you. The base plan starts at $1,500 per month with up to 50 users.\n\nCustomer: That seems a bit high for our budget. Is there any flexibility on that?\n\nAgent: I understand your concern about the pricing. We can definitely look at customizing a package based on your specific needs. What features are most important to you?\n\nCustomer: We mainly need the advanced analytics and API access. The user count is fine.\n\nAgent: Great, in that case, I can work with our pricing team to create a custom package focusing on those features. I'll have a quote for you by next week.\n\nCustomer: That would be perfect. Also, how long does implementation typically take?\n\nAgent: Implementation usually takes about 2-3 weeks, depending on your technical requirements and how quickly we can get the necessary information from your team.",
     highlights: [
@@ -488,12 +584,23 @@ const mockTranscripts: Transcript[] = [
         position: 550,
       },
     ],
+    createdAt: new Date(2023, 5, 15, 14, 30),
+    updatedAt: new Date(2023, 5, 15, 14, 30),
   },
   {
     id: "2",
-    customerName: "TechStart Inc.",
+    sourceId: "source-2",
+    type: "email",
+    customer: "TechStart Inc.",
     date: new Date(2023, 5, 16, 10, 15),
-    channel: "email",
+    sentiment: "neutral",
+    summary:
+      "Customer requested CSV export functionality. We informed them it's already in development and will be released within two weeks. Offered beta testing access.",
+    actionItems: [
+      "Set up beta access for CSV export",
+      "Follow up after feature release",
+      "Document CSV format specifications",
+    ],
     content:
       "Subject: Feature Request\n\nHello Support Team,\n\nWe've been using your platform for about a month now and it's been great. However, we're missing a critical feature for our workflow - the ability to export reports in CSV format.\n\nIs this something that's on your roadmap? If so, when can we expect it?\n\nBest regards,\nJamie Smith\nProduct Manager\nTechStart Inc.\n\n---\n\nResponse:\n\nHi Jamie,\n\nThank you for reaching out and for the positive feedback about our platform!\n\nI'm happy to let you know that CSV export functionality is actually already in development and scheduled for release in our next update, which should be available within the next two weeks.\n\nWould you be interested in joining our beta testing program to get early access to this feature? If so, I can set that up for you right away.\n\nPlease let me know if you have any other questions or feature requests.\n\nBest,\nAlex Johnson\nCustomer Success Manager",
     highlights: [
@@ -522,12 +629,23 @@ const mockTranscripts: Transcript[] = [
         position: 520,
       },
     ],
+    createdAt: new Date(2023, 5, 16, 10, 15),
+    updatedAt: new Date(2023, 5, 16, 10, 15),
   },
   {
     id: "3",
-    customerName: "Global Services Ltd.",
+    sourceId: "source-3",
+    type: "chat",
+    customer: "Global Services Ltd.",
     date: new Date(2023, 5, 17, 9, 0),
-    channel: "chat",
+    sentiment: "negative",
+    summary:
+      "Customer had trouble connecting Salesforce to our API. We discovered our documentation was missing Salesforce-specific instructions. Sent internal guide and committed to updating public docs.",
+    actionItems: [
+      "Update public API documentation with Salesforce connector details",
+      "Schedule follow-up call with integration specialist",
+      "Check if customer successfully connected",
+    ],
     content:
       "Customer: Hello, I'm having trouble connecting our CRM system to your API. Is there a specific endpoint I should be using?\n\nAgent: Hi there! I'd be happy to help with the API integration. Which CRM system are you using?\n\nCustomer: We're using Salesforce.\n\nAgent: Perfect! For Salesforce integration, you'll want to use our dedicated Salesforce connector endpoint at api.example.com/v2/connectors/salesforce. Have you checked our integration documentation?\n\nCustomer: I looked at the docs but couldn't find specific Salesforce instructions.\n\nAgent: I apologize for the confusion. You're right, we haven't updated our public docs with the Salesforce connector yet. I'll send you our internal guide right away, and I'll make sure our team updates the public documentation this week.\n\nCustomer: That would be very helpful, thank you.\n\nAgent: You're welcome! I've just emailed the guide to you. Please let me know if you have any questions after reviewing it. I'll also set up a follow-up call with one of our integration specialists if you'd like some hands-on assistance.",
     highlights: [
@@ -556,6 +674,8 @@ const mockTranscripts: Transcript[] = [
         position: 450,
       },
     ],
+    createdAt: new Date(2023, 5, 17, 9, 0),
+    updatedAt: new Date(2023, 5, 17, 9, 0),
   },
 ];
 

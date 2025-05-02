@@ -10,7 +10,24 @@ import {
   SentimentType,
 } from "./types";
 
+// Processing status types for the two-phase process
+export type ProcessingStatus =
+  | "idle"
+  | "processing"
+  | "syncing"
+  | "completed"
+  | "failed";
+
 // Repository interfaces (ports)
+// Connection health status type
+export type ConnectionHealthStatus = {
+  status: "healthy" | "degraded" | "error";
+  latency?: number;
+  lastChecked: Date;
+  message?: string;
+  details?: Record<string, any>;
+};
+
 export interface EngagementSourceRepository {
   getSources(): Promise<EngagementSource[]>;
   getSourceById(id: string): Promise<EngagementSource | null>;
@@ -24,6 +41,20 @@ export interface EngagementSourceRepository {
     settings: Record<string, any>,
   ): Promise<EngagementSource>;
   disconnectSource(id: string): Promise<EngagementSource>;
+
+  // New methods for API connection health checks
+  checkConnectionHealth(id: string): Promise<ConnectionHealthStatus>;
+  checkAllConnectionsHealth(): Promise<Record<string, ConnectionHealthStatus>>;
+
+  // New method for testing a connection before saving
+  testConnection(
+    sourceType: SourceType,
+    settings: Record<string, any>,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, any>;
+  }>;
 }
 
 export interface InteractionRepository {
@@ -34,6 +65,16 @@ export interface InteractionRepository {
   ): Promise<Interaction>;
   updateInteraction(interaction: Interaction): Promise<Interaction>;
   deleteInteraction(id: string): Promise<boolean>;
+
+  // Methods for the two-phase processing and sync process
+  registerProcessingCallback?(
+    callback: (status: ProcessingStatus, progress: number) => void,
+  ): void;
+  getProcessingStatus?(): { status: ProcessingStatus; progress: number };
+  processAndSyncToCrm?(
+    crmType: string,
+    options?: Record<string, any>,
+  ): Promise<boolean>;
 }
 
 export interface AnalyticsRepository {

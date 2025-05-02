@@ -5,6 +5,7 @@ import {
   SocialSettings,
   RecordingSettings,
 } from "@/hooks/useEngagementSources";
+import { ConnectionHealthStatus } from "@/domain/engagement/interfaces";
 
 // Connection status types for engagement sources
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
@@ -17,14 +18,34 @@ interface SourceStatus {
   recording: ConnectionStatus;
 }
 
+// Error message tracking for all source types
+interface SourceErrors {
+  phone: string | null;
+  email: string | null;
+  social: string | null;
+  recording: string | null;
+}
+
+// Health status tracking for all source types
+interface SourceHealth {
+  phone: ConnectionHealthStatus | null;
+  email: ConnectionHealthStatus | null;
+  social: ConnectionHealthStatus | null;
+  recording: ConnectionHealthStatus | null;
+}
+
 // Define the shape of the context
 interface EngagementSourcesContextType {
   sourceStatus: SourceStatus;
+  sourceErrors: SourceErrors;
+  sourceHealth: SourceHealth;
   phoneSettings: PhoneSettings;
   emailSettings: EmailSettings;
   socialSettings: SocialSettings;
   recordingSettings: RecordingSettings;
   handleConnect: (sourceType: string) => void;
+  handleDisconnect: (sourceType: string) => void;
+  handleCheckHealth: (sourceType: string) => void;
   handlePhoneSettingChange: (
     field: keyof PhoneSettings,
     value: string | boolean,
@@ -52,11 +73,15 @@ const EngagementSourcesContext = createContext<
 interface EngagementSourcesProviderProps {
   children: React.ReactNode;
   sourceStatus: SourceStatus;
+  sourceErrors: SourceErrors;
+  sourceHealth: SourceHealth;
   phoneSettings: PhoneSettings;
   emailSettings: EmailSettings;
   socialSettings: SocialSettings;
   recordingSettings: RecordingSettings;
   handleConnect: (sourceType: string) => void;
+  handleDisconnect: (sourceType: string) => void;
+  handleCheckHealth: (sourceType: string) => void;
   handlePhoneSettingChange: (
     field: keyof PhoneSettings,
     value: string | boolean,
@@ -83,11 +108,15 @@ export const EngagementSourcesProvider: React.FC<
 > = ({
   children,
   sourceStatus,
+  sourceErrors,
+  sourceHealth,
   phoneSettings,
   emailSettings,
   socialSettings,
   recordingSettings,
   handleConnect,
+  handleDisconnect,
+  handleCheckHealth,
   handlePhoneSettingChange,
   handleEmailSettingChange,
   handleSocialSettingChange,
@@ -95,11 +124,15 @@ export const EngagementSourcesProvider: React.FC<
 }) => {
   const value = {
     sourceStatus,
+    sourceErrors,
+    sourceHealth,
     phoneSettings,
     emailSettings,
     socialSettings,
     recordingSettings,
     handleConnect,
+    handleDisconnect,
+    handleCheckHealth,
     handlePhoneSettingChange,
     handleEmailSettingChange,
     handleSocialSettingChange,
@@ -118,7 +151,7 @@ export const EngagementSourcesProvider: React.FC<
  * @returns The context value
  * @throws Error if used outside of an EngagementSourcesProvider
  */
-export const useEngagementSourcesContext = (): EngagementSourcesContextType => {
+export function useEngagementSourcesContext(): EngagementSourcesContextType {
   const context = useContext(EngagementSourcesContext);
   if (context === undefined) {
     throw new Error(
@@ -126,4 +159,4 @@ export const useEngagementSourcesContext = (): EngagementSourcesContextType => {
     );
   }
   return context;
-};
+}

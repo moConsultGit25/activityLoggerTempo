@@ -7,9 +7,14 @@ import {
 import { AnalyticsRepository } from "../domain/engagement/interfaces";
 import { AnalyticsApiAdapter } from "../infrastructure/api/AnalyticsApiAdapter";
 
-export const useAnalytics = (repository?: AnalyticsRepository) => {
-  // Use provided repository or create a default one
-  const analyticsRepository = repository || new AnalyticsApiAdapter();
+export const useAnalytics = (
+  repository?: AnalyticsRepository,
+  useMockData: boolean = true,
+) => {
+  // Use provided repository or create a default one with mock data
+  const analyticsRepository =
+    repository ||
+    new AnalyticsApiAdapter("/api/engagement/analytics", useMockData);
 
   const [channelMetrics, setChannelMetrics] = useState<ChannelMetrics | null>(
     null,
