@@ -10,60 +10,103 @@ import {
   MessageSquare,
   Phone,
   Mail,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import {
+  ChannelMetrics,
+  TeamMember,
+  EngagementTrend,
+} from "@/domain/engagement/types";
 
 interface AnalyticsOverviewProps {
-  channelMetrics?: {
-    calls: number;
-    emails: number;
-    chats: number;
-    texts: number;
-  };
-  teamPerformance?: Array<{
-    name: string;
-    interactions: number;
-    responseTime: number;
-    sentiment: number;
-  }>;
-  engagementTrends?: Array<{
-    date: string;
-    interactions: number;
-  }>;
+  channelMetrics?: ChannelMetrics;
+  teamPerformance?: TeamMember[];
+  engagementTrends?: EngagementTrend[];
 }
 
-const AnalyticsOverview = ({
-  channelMetrics = {
-    calls: 124,
-    emails: 89,
-    chats: 67,
-    texts: 45,
-  },
-  teamPerformance = [
-    { name: "John Doe", interactions: 45, responseTime: 2.3, sentiment: 0.8 },
-    { name: "Jane Smith", interactions: 38, responseTime: 1.8, sentiment: 0.7 },
-    {
-      name: "Mike Johnson",
-      interactions: 52,
-      responseTime: 3.1,
-      sentiment: 0.6,
-    },
-    {
-      name: "Sarah Williams",
-      interactions: 29,
-      responseTime: 2.5,
-      sentiment: 0.9,
-    },
-  ],
-  engagementTrends = [
-    { date: "Jan 1", interactions: 45 },
-    { date: "Jan 8", interactions: 52 },
-    { date: "Jan 15", interactions: 49 },
-    { date: "Jan 22", interactions: 63 },
-    { date: "Jan 29", interactions: 58 },
-    { date: "Feb 5", interactions: 71 },
-    { date: "Feb 12", interactions: 68 },
-  ],
-}: AnalyticsOverviewProps) => {
+const AnalyticsOverview = (props: AnalyticsOverviewProps) => {
+  // Use the hook to fetch analytics data
+  const {
+    channelMetrics,
+    teamPerformance,
+    engagementTrends,
+    loading,
+    error,
+    refreshAnalytics,
+  } = useAnalytics();
+
+  // Use props if provided, otherwise use data from the hook
+  const metrics = props.channelMetrics ||
+    channelMetrics || {
+      calls: 0,
+      emails: 0,
+      chats: 0,
+      texts: 0,
+    };
+
+  const performance = props.teamPerformance || teamPerformance || [];
+
+  const trends = props.engagementTrends || engagementTrends || [];
+  // Handle loading state
+  if (
+    loading &&
+    !props.channelMetrics &&
+    !props.teamPerformance &&
+    !props.engagementTrends
+  ) {
+    return (
+      <Card className="w-full bg-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Analytics Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-2 text-muted-foreground">
+              Loading analytics data...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Handle error state
+  if (
+    error &&
+    !props.channelMetrics &&
+    !props.teamPerformance &&
+    !props.engagementTrends
+  ) {
+    return (
+      <Card className="w-full bg-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Analytics Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+            <p className="mt-2 text-muted-foreground">{error}</p>
+            <button
+              onClick={refreshAnalytics}
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full bg-white">
       <CardHeader>
@@ -101,7 +144,7 @@ const AnalyticsOverview = ({
                     <Phone className="h-6 w-6 text-blue-600" />
                   </div>
                   <h3 className="text-lg font-medium">Calls</h3>
-                  <p className="text-3xl font-bold">{channelMetrics.calls}</p>
+                  <p className="text-3xl font-bold">{metrics.calls}</p>
                   <p className="text-sm text-muted-foreground">Last 30 days</p>
                 </CardContent>
               </Card>
@@ -112,7 +155,7 @@ const AnalyticsOverview = ({
                     <Mail className="h-6 w-6 text-green-600" />
                   </div>
                   <h3 className="text-lg font-medium">Emails</h3>
-                  <p className="text-3xl font-bold">{channelMetrics.emails}</p>
+                  <p className="text-3xl font-bold">{metrics.emails}</p>
                   <p className="text-sm text-muted-foreground">Last 30 days</p>
                 </CardContent>
               </Card>
@@ -123,7 +166,7 @@ const AnalyticsOverview = ({
                     <MessageSquare className="h-6 w-6 text-purple-600" />
                   </div>
                   <h3 className="text-lg font-medium">Chats</h3>
-                  <p className="text-3xl font-bold">{channelMetrics.chats}</p>
+                  <p className="text-3xl font-bold">{metrics.chats}</p>
                   <p className="text-sm text-muted-foreground">Last 30 days</p>
                 </CardContent>
               </Card>
@@ -134,7 +177,7 @@ const AnalyticsOverview = ({
                     <MessageSquare className="h-6 w-6 text-orange-600" />
                   </div>
                   <h3 className="text-lg font-medium">Texts</h3>
-                  <p className="text-3xl font-bold">{channelMetrics.texts}</p>
+                  <p className="text-3xl font-bold">{metrics.texts}</p>
                   <p className="text-sm text-muted-foreground">Last 30 days</p>
                 </CardContent>
               </Card>
@@ -162,7 +205,7 @@ const AnalyticsOverview = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {teamPerformance.map((member, index) => (
+                  {performance.map((member, index) => (
                     <tr key={index} className="border-b">
                       <td className="p-3">{member.name}</td>
                       <td className="p-3">{member.interactions}</td>
@@ -195,8 +238,7 @@ const AnalyticsOverview = ({
                   Engagement Trend Chart
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Data points:{" "}
-                  {engagementTrends.map((point) => point.date).join(", ")}
+                  Data points: {trends.map((point) => point.date).join(", ")}
                 </p>
               </div>
             </div>

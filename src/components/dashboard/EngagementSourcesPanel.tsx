@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -23,35 +23,25 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { useEngagementSources } from "@/hooks/useEngagementSources";
 
 interface EngagementSourcesPanelProps {
   // Props can be added as needed
 }
 
 const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
-  // State for tracking connection status of different sources
-  const [sourceStatus, setSourceStatus] = useState({
-    phone: "disconnected", // disconnected, connecting, connected, error
-    email: "disconnected",
-    social: "disconnected",
-    recording: "disconnected",
-  });
-
-  // Function to handle connection attempt
-  const handleConnect = (sourceType: keyof typeof sourceStatus) => {
-    setSourceStatus((prev) => ({
-      ...prev,
-      [sourceType]: "connecting",
-    }));
-
-    // Simulate connection process
-    setTimeout(() => {
-      setSourceStatus((prev) => ({
-        ...prev,
-        [sourceType]: Math.random() > 0.2 ? "connected" : "error",
-      }));
-    }, 1500);
-  };
+  const {
+    sourceStatus,
+    phoneSettings,
+    emailSettings,
+    socialSettings,
+    recordingSettings,
+    handleConnect,
+    handlePhoneSettingChange,
+    handleEmailSettingChange,
+    handleSocialSettingChange,
+    handleRecordingSettingChange,
+  } = useEngagementSources();
 
   // Function to get status badge based on connection state
   const getStatusBadge = (status: string) => {
@@ -107,6 +97,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="phone-provider"
                     placeholder="e.g., Twilio, Vonage"
+                    value={phoneSettings.provider}
+                    onChange={(e) =>
+                      handlePhoneSettingChange("provider", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -115,13 +109,23 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                     id="phone-api-key"
                     type="password"
                     placeholder="Enter API key"
+                    value={phoneSettings.apiKey}
+                    onChange={(e) =>
+                      handlePhoneSettingChange("apiKey", e.target.value)
+                    }
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-log-calls" />
+                  <Switch
+                    id="auto-log-calls"
+                    checked={phoneSettings.autoLogCalls}
+                    onCheckedChange={(checked) =>
+                      handlePhoneSettingChange("autoLogCalls", checked)
+                    }
+                  />
                   <Label htmlFor="auto-log-calls">
                     Automatically log all calls
                   </Label>
@@ -172,6 +176,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="email-provider"
                     placeholder="e.g., Gmail, Outlook"
+                    value={emailSettings.provider}
+                    onChange={(e) =>
+                      handleEmailSettingChange("provider", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -180,13 +188,23 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                     id="email-account"
                     type="email"
                     placeholder="your@email.com"
+                    value={emailSettings.account}
+                    onChange={(e) =>
+                      handleEmailSettingChange("account", e.target.value)
+                    }
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-log-emails" />
+                  <Switch
+                    id="auto-log-emails"
+                    checked={emailSettings.autoLogEmails}
+                    onCheckedChange={(checked) =>
+                      handleEmailSettingChange("autoLogEmails", checked)
+                    }
+                  />
                   <Label htmlFor="auto-log-emails">
                     Automatically log all emails
                   </Label>
@@ -237,11 +255,22 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="social-platform"
                     placeholder="e.g., Twitter, LinkedIn, Facebook"
+                    value={socialSettings.platform}
+                    onChange={(e) =>
+                      handleSocialSettingChange("platform", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="social-account">Account Name/Handle</Label>
-                  <Input id="social-account" placeholder="e.g., @yourcompany" />
+                  <Input
+                    id="social-account"
+                    placeholder="e.g., @yourcompany"
+                    value={socialSettings.account}
+                    onChange={(e) =>
+                      handleSocialSettingChange("account", e.target.value)
+                    }
+                  />
                 </div>
               </div>
 
@@ -252,6 +281,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                     id="social-api-key"
                     type="password"
                     placeholder="Enter API key"
+                    value={socialSettings.apiKey}
+                    onChange={(e) =>
+                      handleSocialSettingChange("apiKey", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -260,13 +293,23 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                     id="social-api-secret"
                     type="password"
                     placeholder="Enter API secret"
+                    value={socialSettings.apiSecret}
+                    onChange={(e) =>
+                      handleSocialSettingChange("apiSecret", e.target.value)
+                    }
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-log-social" />
+                  <Switch
+                    id="auto-log-social"
+                    checked={socialSettings.autoLogSocial}
+                    onCheckedChange={(checked) =>
+                      handleSocialSettingChange("autoLogSocial", checked)
+                    }
+                  />
                   <Label htmlFor="auto-log-social">
                     Automatically log all social media interactions
                   </Label>
@@ -275,7 +318,13 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-respond-social" />
+                  <Switch
+                    id="auto-respond-social"
+                    checked={socialSettings.autoRespondSocial}
+                    onCheckedChange={(checked) =>
+                      handleSocialSettingChange("autoRespondSocial", checked)
+                    }
+                  />
                   <Label htmlFor="auto-respond-social">
                     Enable automated response suggestions
                   </Label>
@@ -326,6 +375,13 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="recording-app"
                     placeholder="e.g., Zoom, Google Meet, Gong"
+                    value={recordingSettings.application}
+                    onChange={(e) =>
+                      handleRecordingSettingChange(
+                        "application",
+                        e.target.value,
+                      )
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -333,6 +389,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="recording-account"
                     placeholder="Enter account ID"
+                    value={recordingSettings.accountId}
+                    onChange={(e) =>
+                      handleRecordingSettingChange("accountId", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -344,6 +404,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                     id="recording-api-key"
                     type="password"
                     placeholder="Enter API key"
+                    value={recordingSettings.apiKey}
+                    onChange={(e) =>
+                      handleRecordingSettingChange("apiKey", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -351,6 +415,10 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                   <Input
                     id="recording-webhook"
                     placeholder="https://your-webhook-endpoint.com"
+                    value={recordingSettings.webhook}
+                    onChange={(e) =>
+                      handleRecordingSettingChange("webhook", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -358,21 +426,37 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
               <div className="space-y-2">
                 <Label htmlFor="recording-format">Preferred Format</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" className="justify-start">
+                  <Button
+                    variant="outline"
+                    className={`justify-start ${recordingSettings.format === "audio" ? "border-primary" : ""}`}
+                    onClick={() =>
+                      handleRecordingSettingChange("format", "audio")
+                    }
+                  >
                     <input
                       type="radio"
                       id="format-audio"
                       name="format"
                       className="mr-2"
+                      checked={recordingSettings.format === "audio"}
+                      onChange={() => {}}
                     />
                     Audio Only
                   </Button>
-                  <Button variant="outline" className="justify-start">
+                  <Button
+                    variant="outline"
+                    className={`justify-start ${recordingSettings.format === "video" ? "border-primary" : ""}`}
+                    onClick={() =>
+                      handleRecordingSettingChange("format", "video")
+                    }
+                  >
                     <input
                       type="radio"
                       id="format-video"
                       name="format"
                       className="mr-2"
+                      checked={recordingSettings.format === "video"}
+                      onChange={() => {}}
                     />
                     Audio + Video
                   </Button>
@@ -381,7 +465,13 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-transcribe" />
+                  <Switch
+                    id="auto-transcribe"
+                    checked={recordingSettings.autoTranscribe}
+                    onCheckedChange={(checked) =>
+                      handleRecordingSettingChange("autoTranscribe", checked)
+                    }
+                  />
                   <Label htmlFor="auto-transcribe">
                     Automatically transcribe recordings
                   </Label>
@@ -390,7 +480,13 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch id="auto-analyze" />
+                  <Switch
+                    id="auto-analyze"
+                    checked={recordingSettings.autoAnalyze}
+                    onCheckedChange={(checked) =>
+                      handleRecordingSettingChange("autoAnalyze", checked)
+                    }
+                  />
                   <Label htmlFor="auto-analyze">
                     Automatically analyze conversations for insights
                   </Label>
