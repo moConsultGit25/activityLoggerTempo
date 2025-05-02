@@ -1,10 +1,16 @@
+/**
+ * API Adapter for Engagement Sources
+ *
+ * This adapter implements the EngagementSourceRepository interface and would connect
+ * to a real backend API in a production environment. Currently, it falls back to
+ * using the mock repository for demonstration purposes.
+ *
+ * Following the Adapter pattern from DDD, this class translates between the domain
+ * model and the external API representation.
+ */
+
 import { EngagementSourceRepository } from "../../domain/engagement/interfaces";
 import { EngagementSource } from "../../domain/engagement/types";
-
-/**
- * API Adapter implementation of the EngagementSourceRepository interface.
- * This adapter would connect to a real backend API in a production environment.
- */
 export class EngagementSourceApiAdapter implements EngagementSourceRepository {
   private baseUrl: string;
 

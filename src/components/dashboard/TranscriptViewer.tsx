@@ -1,3 +1,14 @@
+/**
+ * TranscriptViewer Component
+ *
+ * This component implements the "Transcript Viewer" feature from the PRD.
+ * It displays processed conversations with highlighted key moments, commitments,
+ * and customer concerns, allowing users to review and analyze customer interactions.
+ *
+ * The component follows a presentational pattern, receiving data through props
+ * and maintaining its own UI state internally.
+ */
+
 import React, { useState } from "react";
 import {
   Search,
@@ -22,29 +33,42 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 
+/**
+ * Component props and data interfaces
+ */
+
+/** Props for the TranscriptViewer component */
 interface TranscriptViewerProps {
   transcripts?: Transcript[];
 }
 
+/** Represents a customer interaction transcript */
 interface Transcript {
-  id: string;
-  customerName: string;
-  date: Date;
-  channel: "call" | "email" | "chat" | "text";
-  content: string;
-  highlights: Highlight[];
+  id: string; // Unique identifier
+  customerName: string; // Name of the customer
+  date: Date; // When the interaction occurred
+  channel: "call" | "email" | "chat" | "text"; // Communication channel
+  content: string; // Full transcript content
+  highlights: Highlight[]; // Important moments in the transcript
 }
 
+/** Represents an important moment in a transcript */
 interface Highlight {
-  id: string;
-  type: "key_moment" | "commitment" | "concern";
-  text: string;
-  position: number;
+  id: string; // Unique identifier
+  type: "key_moment" | "commitment" | "concern"; // Type of highlight
+  text: string; // The highlighted text
+  position: number; // Position in the transcript
 }
 
+/**
+ * TranscriptViewer component displays and allows interaction with customer conversation transcripts
+ *
+ * @param transcripts - Array of transcript data to display (defaults to mock data if not provided)
+ */
 const TranscriptViewer = ({
   transcripts = mockTranscripts,
 }: TranscriptViewerProps) => {
+  // UI state management
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
@@ -52,23 +76,38 @@ const TranscriptViewer = ({
   const [selectedTranscript, setSelectedTranscript] =
     useState<Transcript | null>(mockTranscripts[0]);
 
+  /**
+   * Updates the selected date filter
+   * @param date - The newly selected date or undefined to clear the filter
+   */
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
   };
 
+  /**
+   * Sets the currently selected transcript for detailed viewing
+   * @param transcript - The transcript to display
+   */
   const handleTranscriptSelect = (transcript: Transcript) => {
     setSelectedTranscript(transcript);
   };
 
+  /**
+   * Filters transcripts based on search query and selected date
+   * Applies case-insensitive search across customer name and content
+   */
   const filteredTranscripts = transcripts.filter((transcript) => {
+    // Check if transcript matches search query
     const matchesSearch =
+      !searchQuery || // If no search query, include all
       transcript.customerName
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       transcript.content.toLowerCase().includes(searchQuery.toLowerCase());
 
+    // Check if transcript matches selected date
     const matchesDate =
-      !selectedDate ||
+      !selectedDate || // If no date selected, include all
       (transcript.date.getDate() === selectedDate.getDate() &&
         transcript.date.getMonth() === selectedDate.getMonth() &&
         transcript.date.getFullYear() === selectedDate.getFullYear());
@@ -76,16 +115,28 @@ const TranscriptViewer = ({
     return matchesSearch && matchesDate;
   });
 
+  /**
+   * Renders transcript content with highlighted sections
+   *
+   * This function takes the raw transcript text and an array of highlights,
+   * then renders the content with appropriate highlighting for key moments,
+   * commitments, and concerns.
+   *
+   * @param content - The full transcript text
+   * @param highlights - Array of highlights with positions and types
+   * @returns React elements with highlighted sections
+   */
   const renderHighlightedContent = (
     content: string,
     highlights: Highlight[],
   ) => {
-    if (!highlights.length) return <p>{content}</p>;
+    // If no highlights, just return the plain content
+    if (!highlights || !highlights.length) return <p>{content}</p>;
 
     let lastIndex = 0;
     const elements = [];
 
-    // Sort highlights by position
+    // Sort highlights by position to process them in order
     const sortedHighlights = [...highlights].sort(
       (a, b) => a.position - b.position,
     );
@@ -100,7 +151,7 @@ const TranscriptViewer = ({
         );
       }
 
-      // Add the highlighted text
+      // Add the highlighted text with appropriate styling
       const highlightClass = getHighlightClass(highlight.type);
       elements.push(
         <span
@@ -112,10 +163,11 @@ const TranscriptViewer = ({
         </span>,
       );
 
+      // Update the last processed position
       lastIndex = highlight.position + highlight.text.length;
     });
 
-    // Add any remaining text
+    // Add any remaining text after the last highlight
     if (lastIndex < content.length) {
       elements.push(<span key="text-end">{content.substring(lastIndex)}</span>);
     }
@@ -123,6 +175,11 @@ const TranscriptViewer = ({
     return <p className="whitespace-pre-wrap">{elements}</p>;
   };
 
+  /**
+   * Returns the appropriate CSS class for a highlight type
+   * @param type - The type of highlight
+   * @returns CSS class string for styling the highlight
+   */
   const getHighlightClass = (type: string) => {
     switch (type) {
       case "key_moment":
@@ -136,6 +193,11 @@ const TranscriptViewer = ({
     }
   };
 
+  /**
+   * Returns a human-readable title for a highlight type
+   * @param type - The type of highlight
+   * @returns Display text for the highlight type
+   */
   const getHighlightTitle = (type: string) => {
     switch (type) {
       case "key_moment":
@@ -149,19 +211,17 @@ const TranscriptViewer = ({
     }
   };
 
+  /**
+   * Returns an icon component for a communication channel
+   * @param channel - The communication channel
+   * @returns React component for the channel icon
+   *
+   * TODO: Use different icons for different channel types instead of MessageSquare for all
+   */
   const getChannelIcon = (channel: string) => {
-    switch (channel) {
-      case "call":
-        return <MessageSquare className="h-4 w-4" />;
-      case "email":
-        return <MessageSquare className="h-4 w-4" />;
-      case "chat":
-        return <MessageSquare className="h-4 w-4" />;
-      case "text":
-        return <MessageSquare className="h-4 w-4" />;
-      default:
-        return <MessageSquare className="h-4 w-4" />;
-    }
+    // Currently using the same icon for all channels
+    // This should be updated with appropriate icons for each channel type
+    return <MessageSquare className="h-4 w-4" />;
   };
 
   return (
@@ -390,7 +450,10 @@ const TranscriptViewer = ({
   );
 };
 
-// Mock data for demonstration
+/**
+ * Mock transcript data for demonstration purposes
+ * In a production environment, this would come from the InteractionRepository
+ */
 const mockTranscripts: Transcript[] = [
   {
     id: "1",
@@ -496,4 +559,5 @@ const mockTranscripts: Transcript[] = [
   },
 ];
 
+export { TranscriptViewer };
 export default TranscriptViewer;

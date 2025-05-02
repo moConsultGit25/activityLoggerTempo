@@ -1,4 +1,13 @@
-// Repository pattern for the Engagement domain
+/**
+ * Repository pattern implementation for the Engagement domain
+ *
+ * This file implements the repository interfaces defined in interfaces.ts
+ * using mock data for demonstration purposes. In a production environment,
+ * these would connect to actual data sources.
+ *
+ * Following DDD principles, repositories provide a collection-like interface
+ * for accessing domain objects, abstracting the underlying data access mechanisms.
+ */
 
 import {
   EngagementSource,
@@ -15,7 +24,12 @@ import {
   DateRange,
 } from "./interfaces";
 
-// Mock data for demonstration - in a real app, this would connect to a backend API
+/**
+ * Mock data for engagement sources
+ *
+ * In a production environment, this data would come from a database or API.
+ * Each source represents a different channel through which customer interactions occur.
+ */
 const mockEngagementSources: EngagementSource[] = [
   {
     id: "1",
@@ -26,6 +40,8 @@ const mockEngagementSources: EngagementSource[] = [
       apiKey: "",
       autoLogCalls: true,
     },
+    createdAt: new Date(),
+    updatedAt: new Date(),
   },
   {
     id: "2",
@@ -36,6 +52,8 @@ const mockEngagementSources: EngagementSource[] = [
       authToken: "",
       autoLogEmails: true,
     },
+    createdAt: new Date(),
+    updatedAt: new Date(),
   },
   {
     id: "3",
@@ -47,6 +65,8 @@ const mockEngagementSources: EngagementSource[] = [
       apiSecret: "",
       autoLogMessages: true,
     },
+    createdAt: new Date(),
+    updatedAt: new Date(),
   },
   {
     id: "4",
@@ -58,9 +78,17 @@ const mockEngagementSources: EngagementSource[] = [
       apiSecret: "",
       autoTranscribe: true,
     },
+    createdAt: new Date(),
+    updatedAt: new Date(),
   },
 ];
 
+/**
+ * Mock interaction data
+ *
+ * Represents customer interactions across different channels (call, email, chat).
+ * Each interaction includes metadata like sentiment analysis, action items, and content.
+ */
 const mockInteractions: Interaction[] = [
   {
     id: "1",
@@ -79,6 +107,8 @@ const mockInteractions: Interaction[] = [
     followUp: new Date(2023, 5, 22),
     content:
       "Customer: Hi, I wanted to discuss the pricing for your enterprise plan.\n\nAgent: Hello! I'd be happy to go over our enterprise pricing with you.",
+    createdAt: new Date(2023, 5, 15),
+    updatedAt: new Date(2023, 5, 15),
   },
   {
     id: "2",
@@ -92,6 +122,8 @@ const mockInteractions: Interaction[] = [
     actionItems: ["Share API documentation", "Connect with engineering team"],
     content:
       "Subject: API Integration Questions\n\nHello Support Team,\n\nWe have some questions about your API integration capabilities.",
+    createdAt: new Date(2023, 5, 14),
+    updatedAt: new Date(2023, 5, 14),
   },
   {
     id: "3",
@@ -111,13 +143,26 @@ const mockInteractions: Interaction[] = [
     followUp: new Date(2023, 5, 14),
     content:
       "Customer: Hello, I'm having trouble with the reporting dashboard. It's not loading correctly.\n\nAgent: I'm sorry to hear that. Let me help you troubleshoot.",
+    createdAt: new Date(2023, 5, 13),
+    updatedAt: new Date(2023, 5, 13),
   },
 ];
 
-// Implementation of all repository interfaces
+/**
+ * Implementation of all repository interfaces
+ *
+ * This object implements the EngagementSourceRepository, InteractionRepository,
+ * and AnalyticsRepository interfaces defined in interfaces.ts.
+ *
+ * In a production environment, these methods would connect to actual data sources
+ * rather than using mock data.
+ */
 export const EngagementRepository = {
   // EngagementSourceRepository implementation
-  // EngagementSourceRepository implementation
+  /**
+   * Retrieves all engagement sources
+   * @returns Promise resolving to an array of engagement sources
+   */
   getSources: async (): Promise<EngagementSource[]> => {
     // In a real app, this would be an API call
     return Promise.resolve([...mockEngagementSources]);

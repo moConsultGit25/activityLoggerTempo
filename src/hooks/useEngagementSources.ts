@@ -1,9 +1,24 @@
-import { useState } from "react";
+/**
+ * useEngagementSources Hook
+ *
+ * This custom hook implements the business logic for the "Automated Engagement Entry" feature
+ * from the PRD. It manages the state and operations for connecting various engagement sources
+ * (phone, email, social, recording) to enable automated interaction capture.
+ *
+ * Following DDD principles, this hook acts as an application service that coordinates between
+ * the UI layer and the domain layer. It uses the repository pattern to abstract data access
+ * and follows the dependency inversion principle by accepting a repository interface.
+ */
 
+import { useState, useEffect, useCallback } from "react";
+import { EngagementSourceRepository } from "../domain/engagement/interfaces";
+import { EngagementSource, SourceType } from "../domain/engagement/types";
+import { EngagementSourceApiAdapter } from "../infrastructure/api/EngagementSourceApiAdapter";
+
+// Connection status types for engagement sources
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
-type SourceType = "phone" | "email" | "social" | "recording";
-
+// Status tracking for all source types
 interface SourceStatus {
   phone: ConnectionStatus;
   email: ConnectionStatus;
@@ -11,7 +26,10 @@ interface SourceStatus {
   recording: ConnectionStatus;
 }
 
-// Settings interfaces for each source type
+/**
+ * Settings interfaces for each source type
+ * These represent the configuration options for different engagement sources
+ */
 export interface PhoneSettings {
   provider: string;
   apiKey: string;
@@ -43,7 +61,20 @@ export interface RecordingSettings {
   autoAnalyze: boolean;
 }
 
-export function useEngagementSources() {
+/**
+ * Custom hook for managing engagement sources
+ * @param repository - Optional repository implementation (for dependency injection)
+ * @returns Object containing state and handlers for engagement sources
+ */
+export function useEngagementSources(repository?: EngagementSourceRepository) {
+  // Use the provided repository or create a default one (dependency injection)
+  const sourceRepository = repository || new EngagementSourceApiAdapter();
+
+  // State for sources from repository
+  const [sources, setSources] = useState<EngagementSource[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
   // State for tracking connection status of different sources
   const [sourceStatus, setSourceStatus] = useState<SourceStatus>({
     phone: "disconnected",
@@ -52,21 +83,19 @@ export function useEngagementSources() {
     recording: "disconnected",
   });
 
-  // State for phone integration settings
+  // State for source-specific settings
   const [phoneSettings, setPhoneSettings] = useState<PhoneSettings>({
     provider: "",
     apiKey: "",
     autoLogCalls: false,
   });
 
-  // State for email integration settings
   const [emailSettings, setEmailSettings] = useState<EmailSettings>({
     provider: "",
     account: "",
     autoLogEmails: false,
   });
 
-  // State for social integration settings
   const [socialSettings, setSocialSettings] = useState<SocialSettings>({
     platform: "",
     account: "",
@@ -76,7 +105,6 @@ export function useEngagementSources() {
     autoRespondSocial: false,
   });
 
-  // State for recording integration settings
   const [recordingSettings, setRecordingSettings] = useState<RecordingSettings>(
     {
       application: "",
@@ -89,23 +117,98 @@ export function useEngagementSources() {
     },
   );
 
-  // Function to handle connection attempt
-  const handleConnect = (sourceType: SourceType) => {
+  /**
+   * Fetches engagement sources from the repository and updates local state
+   * This function follows the repository pattern from DDD
+   */
+  const fetchSources = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const fetchedSources = await sourceRepository.getSources();
+      setSources(fetchedSources);
+
+      // Update connection status based on fetched sources
+      const newStatus = { ...sourceStatus };
+      fetchedSources.forEach((source) => {
+        if (source.type in newStatus) {
+          newStatus[source.type as keyof SourceStatus] = source.isConnected
+            ? "connected"
+            : "disconnected";
+        }
+      });
+      setSourceStatus(newStatus);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("Failed to fetch sources"),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [sourceRepository, sourceStatus]);
+
+  // Load sources on initial render
+  useEffect(() => {
+    fetchSources();
+  }, [fetchSources]);
+
+  /**
+   * Handles connection attempt for a specific source type
+   * @param sourceType - Type of source to connect (phone, email, social, recording)
+   */
+  const handleConnect = async (sourceType: SourceType) => {
     setSourceStatus((prev) => ({
       ...prev,
       [sourceType]: "connecting",
     }));
 
-    // Simulate connection process
-    setTimeout(() => {
+    try {
+      // Find the source with this type
+      const sourceToConnect = sources.find((s) => s.type === sourceType);
+      if (!sourceToConnect) {
+        throw new Error(`No source found with type ${sourceType}`);
+      }
+
+      // Get the appropriate settings based on source type
+      let settings: Record<string, any> = {};
+      switch (sourceType) {
+        case "phone":
+          settings = phoneSettings;
+          break;
+        case "email":
+          settings = emailSettings;
+          break;
+        case "social":
+          settings = socialSettings;
+          break;
+        case "recording":
+          settings = recordingSettings;
+          break;
+      }
+
+      // Connect the source using the repository
+      await sourceRepository.connectSource(sourceToConnect.id, settings);
+
       setSourceStatus((prev) => ({
         ...prev,
-        [sourceType]: Math.random() > 0.2 ? "connected" : "error",
+        [sourceType]: "connected",
       }));
-    }, 1500);
+
+      // Refresh sources to get updated data
+      fetchSources();
+    } catch (err) {
+      console.error(`Error connecting ${sourceType} source:`, err);
+      setSourceStatus((prev) => ({
+        ...prev,
+        [sourceType]: "error",
+      }));
+    }
   };
 
-  // Function to handle phone settings changes
+  /**
+   * Handler functions for updating settings for different source types
+   * These functions maintain immutability by creating new state objects
+   */
   const handlePhoneSettingChange = (
     field: keyof PhoneSettings,
     value: string | boolean,
@@ -116,7 +219,6 @@ export function useEngagementSources() {
     }));
   };
 
-  // Function to handle email settings changes
   const handleEmailSettingChange = (
     field: keyof EmailSettings,
     value: string | boolean,
@@ -127,7 +229,6 @@ export function useEngagementSources() {
     }));
   };
 
-  // Function to handle social settings changes
   const handleSocialSettingChange = (
     field: keyof SocialSettings,
     value: string | boolean,
@@ -138,7 +239,6 @@ export function useEngagementSources() {
     }));
   };
 
-  // Function to handle recording settings changes
   const handleRecordingSettingChange = (
     field: keyof RecordingSettings,
     value: string | boolean,
@@ -149,7 +249,11 @@ export function useEngagementSources() {
     }));
   };
 
+  // Return all state and handlers needed by the UI components
   return {
+    sources,
+    loading,
+    error,
     sourceStatus,
     phoneSettings,
     emailSettings,
@@ -160,5 +264,6 @@ export function useEngagementSources() {
     handleEmailSettingChange,
     handleSocialSettingChange,
     handleRecordingSettingChange,
+    refreshSources: fetchSources,
   };
 }

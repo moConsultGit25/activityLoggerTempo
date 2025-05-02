@@ -1,13 +1,19 @@
+/**
+ * API Adapter for Customer Interactions
+ *
+ * This adapter implements the InteractionRepository interface and would connect
+ * to a real backend API in a production environment. Currently, it falls back to
+ * using the mock repository for demonstration purposes.
+ *
+ * Following the Adapter pattern from DDD, this class translates between the domain
+ * model and the external API representation, handling filtering and data transformation.
+ */
+
 import {
   InteractionRepository,
   InteractionFilters,
 } from "../../domain/engagement/interfaces";
 import { Interaction } from "../../domain/engagement/types";
-
-/**
- * API Adapter implementation of the InteractionRepository interface.
- * This adapter would connect to a real backend API in a production environment.
- */
 export class InteractionApiAdapter implements InteractionRepository {
   private baseUrl: string;
 

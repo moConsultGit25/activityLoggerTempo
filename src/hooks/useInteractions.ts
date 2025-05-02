@@ -1,20 +1,47 @@
-import { useState, useEffect, useCallback } from "react";
-import { Interaction } from "../domain/engagement/types";
-import { EngagementRepository } from "../domain/engagement/repository";
-import { produceInteractionCreatedEvent } from "../infrastructure/kafka/eventBus";
+/**
+ * useInteractions Hook
+ *
+ * This custom hook implements the business logic for managing customer interactions
+ * as part of the "Engagement Summary Panel" and "Transcript Viewer" features from the PRD.
+ * It provides functionality to fetch, filter, and manage interaction data.
+ *
+ * Following DDD principles, this hook acts as an application service that coordinates between
+ * the UI layer and the domain layer. It uses the repository pattern to abstract data access
+ * and follows the dependency inversion principle by accepting a repository interface.
+ */
 
-export const useInteractions = () => {
+import { useState, useEffect, useCallback } from "react";
+import {
+  Interaction,
+  InteractionType,
+  SentimentType,
+} from "../domain/engagement/types";
+import { InteractionRepository } from "../domain/engagement/interfaces";
+import { EngagementRepository } from "../domain/engagement/repository";
+
+/**
+ * Custom hook for managing customer interactions
+ * @param repository - Repository implementation for interaction data access (dependency injection)
+ * @returns Object containing state and handlers for interactions
+ */
+export const useInteractions = (
+  repository: InteractionRepository = EngagementRepository,
+) => {
+  // State for interactions data
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [selectedInteraction, setSelectedInteraction] =
     useState<Interaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all interactions
+  /**
+   * Fetches all interactions from the repository
+   * This function follows the repository pattern from DDD
+   */
   const fetchInteractions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await EngagementRepository.getInteractions();
+      const data = await repository.getInteractions();
       setInteractions(data);
       setError(null);
     } catch (err) {
@@ -23,23 +50,34 @@ export const useInteractions = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [repository]);
 
-  // Get a single interaction by ID
-  const getInteractionById = useCallback(async (id: string) => {
-    try {
-      const interaction = await EngagementRepository.getInteractionById(id);
-      if (interaction) {
-        setSelectedInteraction(interaction);
+  /**
+   * Fetches a single interaction by ID and updates the selected interaction state
+   * @param id - ID of the interaction to fetch
+   * @returns The fetched interaction or null if not found
+   */
+  const getInteractionById = useCallback(
+    async (id: string) => {
+      try {
+        const interaction = await repository.getInteractionById(id);
+        if (interaction) {
+          setSelectedInteraction(interaction);
+        }
+        return interaction;
+      } catch (err) {
+        console.error("Failed to get interaction:", err);
+        return null;
       }
-      return interaction;
-    } catch (err) {
-      console.error("Failed to get interaction:", err);
-      return null;
-    }
-  }, []);
+    },
+    [repository],
+  );
 
-  // Filter interactions by various criteria
+  /**
+   * Filters interactions based on provided criteria
+   * @param filters - Object containing filter criteria
+   * @returns Filtered array of interactions
+   */
   const filterInteractions = useCallback(
     (filters: {
       searchQuery?: string;
@@ -49,7 +87,7 @@ export const useInteractions = () => {
       sentiment?: string;
     }) => {
       return interactions.filter((interaction) => {
-        // Apply search query filter
+        // Apply search query filter across multiple fields
         if (
           filters.searchQuery &&
           !(
@@ -67,7 +105,7 @@ export const useInteractions = () => {
           return false;
         }
 
-        // Apply date filter
+        // Apply date filter (exact date match)
         if (
           filters.date &&
           (interaction.date.getDate() !== filters.date.getDate() ||
@@ -86,7 +124,7 @@ export const useInteractions = () => {
           return false;
         }
 
-        // Apply type filter
+        // Apply interaction type filter
         if (
           filters.type &&
           filters.type !== "all" &&
@@ -115,6 +153,7 @@ export const useInteractions = () => {
     fetchInteractions();
   }, [fetchInteractions]);
 
+  // Return all state and handlers needed by the UI components
   return {
     interactions,
     selectedInteraction,

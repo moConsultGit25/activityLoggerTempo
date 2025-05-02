@@ -1,3 +1,15 @@
+/**
+ * EngagementSourcesPanel Component
+ *
+ * This component is part of the Customer Engagement Analyzer dashboard and implements
+ * the "Automated Engagement Entry" feature from the PRD. It allows users to connect
+ * various engagement sources (phone, email, social, recording) to enable automated
+ * interaction capture.
+ *
+ * Following DDD principles, this component is a pure UI component that receives all data
+ * and handlers from its parent, maintaining a clear separation between UI and business logic.
+ */
+
 import React from "react";
 import {
   Card,
@@ -23,27 +35,75 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { useEngagementSources } from "@/hooks/useEngagementSources";
+import {
+  PhoneSettings,
+  EmailSettings,
+  SocialSettings,
+  RecordingSettings,
+} from "@/hooks/useEngagementSources";
 
-interface EngagementSourcesPanelProps {
-  // Props can be added as needed
+// Connection status types for engagement sources
+type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+
+// Status tracking for all source types
+interface SourceStatus {
+  phone: ConnectionStatus;
+  email: ConnectionStatus;
+  social: ConnectionStatus;
+  recording: ConnectionStatus;
 }
 
-const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
-  const {
-    sourceStatus,
-    phoneSettings,
-    emailSettings,
-    socialSettings,
-    recordingSettings,
-    handleConnect,
-    handlePhoneSettingChange,
-    handleEmailSettingChange,
-    handleSocialSettingChange,
-    handleRecordingSettingChange,
-  } = useEngagementSources();
+/**
+ * Props interface for the EngagementSourcesPanel component
+ * Following DDD principles, this component receives all data and handlers from its parent,
+ * maintaining a clear separation between UI and business logic
+ */
+interface EngagementSourcesPanelProps {
+  sourceStatus: SourceStatus;
+  phoneSettings: PhoneSettings;
+  emailSettings: EmailSettings;
+  socialSettings: SocialSettings;
+  recordingSettings: RecordingSettings;
+  handleConnect: (sourceType: string) => void;
+  handlePhoneSettingChange: (
+    field: keyof PhoneSettings,
+    value: string | boolean,
+  ) => void;
+  handleEmailSettingChange: (
+    field: keyof EmailSettings,
+    value: string | boolean,
+  ) => void;
+  handleSocialSettingChange: (
+    field: keyof SocialSettings,
+    value: string | boolean,
+  ) => void;
+  handleRecordingSettingChange: (
+    field: keyof RecordingSettings,
+    value: string | boolean,
+  ) => void;
+}
 
-  // Function to get status badge based on connection state
+/**
+ * EngagementSourcesPanel component renders a tabbed interface for configuring
+ * different engagement sources (phone, email, social media, recording apps)
+ */
+const EngagementSourcesPanel = ({
+  sourceStatus,
+  phoneSettings,
+  emailSettings,
+  socialSettings,
+  recordingSettings,
+  handleConnect,
+  handlePhoneSettingChange,
+  handleEmailSettingChange,
+  handleSocialSettingChange,
+  handleRecordingSettingChange,
+}: EngagementSourcesPanelProps) => {
+  /**
+   * Renders an appropriate status badge based on the connection state
+   * @param status - Current connection status of the source
+   * @returns Badge component with appropriate styling and text
+   */
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "connected":
@@ -68,6 +128,7 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="phone" className="w-full">
+          {/* Source type tabs */}
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="phone" className="flex items-center gap-2">
               <Phone className="h-4 w-4" /> Phone
@@ -132,6 +193,7 @@ const EngagementSourcesPanel = ({}: EngagementSourcesPanelProps) => {
                 </div>
               </div>
 
+              {/* Connect button with dynamic state display */}
               <Button
                 onClick={() => handleConnect("phone")}
                 disabled={sourceStatus.phone === "connecting"}
