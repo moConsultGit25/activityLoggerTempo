@@ -118,6 +118,14 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
     recording: null,
   });
 
+  // State for tracking simulation status
+  const [sourceSimulation, setSourceSimulation] = useState({
+    phone: false,
+    email: false,
+    social: false,
+    recording: false,
+  });
+
   // State for source-specific settings
   const [phoneSettings, setPhoneSettings] = useState<PhoneSettings>({
     provider: "",
@@ -414,6 +422,7 @@ export function useEngagementSources(repository?: EngagementSourceRepository) {
     sourceStatus,
     sourceErrors,
     sourceHealth,
+    sourceSimulation,
     phoneSettings,
     emailSettings,
     socialSettings,

@@ -188,6 +188,45 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
   private readonly healthCheckInterval: number = 60000; // 1 minute in milliseconds
   private healthCheckTimer?: NodeJS.Timeout;
 
+  // Helper validation methods
+  private isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private isValidEmailProvider(provider: string): boolean {
+    const supportedProviders = [
+      "gmail",
+      "outlook",
+      "yahoo",
+      "office365",
+      "exchange",
+      "imap",
+      "smtp",
+    ];
+    return supportedProviders.includes(provider.toLowerCase());
+  }
+
+  private isValidSocialPlatform(platform: string): boolean {
+    const supportedPlatforms = [
+      "twitter",
+      "linkedin",
+      "facebook",
+      "instagram",
+      "tiktok",
+    ];
+    return supportedPlatforms.includes(platform.toLowerCase());
+  }
+
   constructor(baseUrl: string = "/api/engagement/sources") {
     this.baseUrl = baseUrl;
 
@@ -380,15 +419,19 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
       // Test the connection with the provided settings
       const testResult = await this.testConnection(source.type, settings);
       if (!testResult.success) {
+        const errorDetails = {
+          sourceId: id,
+          sourceType: source.type,
+          details: testResult.details,
+          missingFields: testResult.missingFields,
+          recommendedAction: testResult.recommendedAction,
+        };
+
         const error = new ConnectionError(
           `Connection test failed: ${testResult.message}`,
-          {
-            sourceId: id,
-            sourceType: source.type,
-            details: testResult.details,
-          },
+          errorDetails,
         );
-        this.logger.error(error.message, { error });
+        this.logger.error(error.message, { error, ...errorDetails });
         throw error;
       }
 
@@ -647,6 +690,8 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
     success: boolean;
     message: string;
     details?: Record<string, any>;
+    missingFields?: string[];
+    recommendedAction?: string;
   }> {
     this.logger.info(`Testing connection for ${sourceType}`, { settings });
     try {
@@ -667,55 +712,124 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
       let success = true;
       let message = `Successfully tested connection to ${sourceType}`;
       let details: Record<string, any> = {};
+      let missingFields: string[] = [];
+      let recommendedAction: string | undefined;
 
       // Validate settings based on source type
       switch (sourceType) {
         case "email":
           if (!settings.provider) {
             success = false;
-            message = "Email provider is required";
-          } else if (!settings.account) {
+            missingFields.push("provider");
+          }
+          if (!settings.account) {
             success = false;
-            message = "Email account is required";
+            missingFields.push("account");
+          }
+
+          if (missingFields.length > 0) {
+            message = `Email connection failed: Missing required fields: ${missingFields.join(", ")}`;
+            recommendedAction =
+              "Please provide all required email connection details.";
+          } else if (
+            settings.provider &&
+            !this.isValidEmailProvider(settings.provider)
+          ) {
+            success = false;
+            message = `Unsupported email provider: ${settings.provider}`;
+            recommendedAction =
+              "Please use a supported email provider (Gmail, Outlook, Yahoo, etc).";
+          } else if (settings.account && !this.isValidEmail(settings.account)) {
+            success = false;
+            message = `Invalid email format: ${settings.account}`;
+            recommendedAction = "Please enter a valid email address.";
           }
           break;
 
         case "phone":
           if (!settings.provider) {
             success = false;
-            message = "Phone provider is required";
-          } else if (!settings.apiKey) {
+            missingFields.push("provider");
+          }
+          if (!settings.apiKey) {
             success = false;
-            message = "API key is required for phone integration";
+            missingFields.push("apiKey");
+          }
+
+          if (missingFields.length > 0) {
+            message = `Phone connection failed: Missing required fields: ${missingFields.join(", ")}`;
+            recommendedAction =
+              "Please provide all required phone system connection details.";
+          } else if (settings.apiKey && settings.apiKey.length < 10) {
+            success = false;
+            message = "API key appears to be invalid (too short)";
+            recommendedAction = "Please check your API key and try again.";
           }
           break;
 
         case "social":
           if (!settings.platform) {
             success = false;
-            message = "Social platform is required";
-          } else if (!settings.apiKey) {
+            missingFields.push("platform");
+          }
+          if (!settings.apiKey) {
             success = false;
-            message = "API key is required for social integration";
-          } else if (!settings.apiSecret) {
+            missingFields.push("apiKey");
+          }
+          if (!settings.apiSecret) {
             success = false;
-            message = "API secret is required for social integration";
+            missingFields.push("apiSecret");
+          }
+          if (!settings.account) {
+            success = false;
+            missingFields.push("account");
+          }
+
+          if (missingFields.length > 0) {
+            message = `Social media connection failed: Missing required fields: ${missingFields.join(", ")}`;
+            recommendedAction =
+              "Please provide all required social media connection details.";
+          } else if (
+            settings.platform &&
+            !this.isValidSocialPlatform(settings.platform)
+          ) {
+            success = false;
+            message = `Unsupported social platform: ${settings.platform}`;
+            recommendedAction =
+              "Please use a supported social platform (Twitter, LinkedIn, Facebook, etc).";
           }
           break;
 
         case "recording":
           if (!settings.application) {
             success = false;
-            message = "Recording application is required";
-          } else if (!settings.apiKey) {
+            missingFields.push("application");
+          }
+          if (!settings.apiKey) {
             success = false;
-            message = "API key is required for recording integration";
+            missingFields.push("apiKey");
+          }
+          if (!settings.accountId) {
+            success = false;
+            missingFields.push("accountId");
+          }
+
+          if (missingFields.length > 0) {
+            message = `Recording application connection failed: Missing required fields: ${missingFields.join(", ")}`;
+            recommendedAction =
+              "Please provide all required recording application connection details.";
+          } else if (settings.webhook && !this.isValidUrl(settings.webhook)) {
+            success = false;
+            message = `Invalid webhook URL: ${settings.webhook}`;
+            recommendedAction =
+              "Please enter a valid webhook URL starting with http:// or https://.";
           }
           break;
 
         default:
           success = false;
           message = `Unknown source type: ${sourceType}`;
+          recommendedAction = "Please select a valid source type.";
       }
 
       const endTime = Date.now();
@@ -730,11 +844,11 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
       } else {
         this.logger.warn(
           `Connection test failed for ${sourceType}: ${message}`,
-          { settings },
+          { settings, missingFields, recommendedAction },
         );
       }
 
-      return { success, message, details };
+      return { success, message, details, missingFields, recommendedAction };
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -749,6 +863,8 @@ export class EngagementSourceApiAdapter implements EngagementSourceRepository {
         success: false,
         message: errorMessage,
         details: { error },
+        recommendedAction:
+          "Please check your network connection and try again. If the problem persists, contact support.",
       };
     }
   }

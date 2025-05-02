@@ -34,11 +34,20 @@ interface SourceHealth {
   recording: ConnectionHealthStatus | null;
 }
 
+// Simulation status tracking for all source types
+interface SourceSimulation {
+  phone: boolean;
+  email: boolean;
+  social: boolean;
+  recording: boolean;
+}
+
 // Define the shape of the context
 interface EngagementSourcesContextType {
   sourceStatus: SourceStatus;
   sourceErrors: SourceErrors;
   sourceHealth: SourceHealth;
+  sourceSimulation: SourceSimulation;
   phoneSettings: PhoneSettings;
   emailSettings: EmailSettings;
   socialSettings: SocialSettings;
@@ -75,6 +84,7 @@ interface EngagementSourcesProviderProps {
   sourceStatus: SourceStatus;
   sourceErrors: SourceErrors;
   sourceHealth: SourceHealth;
+  sourceSimulation: SourceSimulation;
   phoneSettings: PhoneSettings;
   emailSettings: EmailSettings;
   socialSettings: SocialSettings;
@@ -110,6 +120,7 @@ export const EngagementSourcesProvider: React.FC<
   sourceStatus,
   sourceErrors,
   sourceHealth,
+  sourceSimulation,
   phoneSettings,
   emailSettings,
   socialSettings,
@@ -126,6 +137,7 @@ export const EngagementSourcesProvider: React.FC<
     sourceStatus,
     sourceErrors,
     sourceHealth,
+    sourceSimulation,
     phoneSettings,
     emailSettings,
     socialSettings,
@@ -151,7 +163,7 @@ export const EngagementSourcesProvider: React.FC<
  * @returns The context value
  * @throws Error if used outside of an EngagementSourcesProvider
  */
-export function useEngagementSourcesContext(): EngagementSourcesContextType {
+export const useEngagementSourcesContext = (): EngagementSourcesContextType => {
   const context = useContext(EngagementSourcesContext);
   if (context === undefined) {
     throw new Error(
@@ -159,4 +171,4 @@ export function useEngagementSourcesContext(): EngagementSourcesContextType {
     );
   }
   return context;
-}
+};

@@ -10,7 +10,7 @@
  * a context to manage state and reduce prop drilling.
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -21,11 +21,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Mail, MessageSquare, Mic } from "lucide-react";
+import { Phone, Mail, MessageSquare, Mic, PlusCircle } from "lucide-react";
 import PhoneTabContent from "./tabs/PhoneTabContent";
 import EmailTabContent from "./tabs/EmailTabContent";
 import SocialTabContent from "./tabs/SocialTabContent";
 import RecordingTabContent from "./tabs/RecordingTabContent";
+import SetupWizard from "@/components/common/SetupWizard";
+import { useEngagementSourcesContext } from "@/contexts/EngagementSourcesContext";
 
 /**
  * EngagementSourcesPanel component renders a tabbed interface for configuring
@@ -35,14 +37,54 @@ import RecordingTabContent from "./tabs/RecordingTabContent";
  * eliminating prop drilling and improving component composition.
  */
 const EngagementSourcesPanel = () => {
+  const { sources, sourceStatus, loading } = useEngagementSourcesContext();
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [firstTimeSetup, setFirstTimeSetup] = useState(false);
+
+  // Check if any sources are connected
+  const anySourceConnected = Object.values(sourceStatus).some(
+    (status) => status === "connected",
+  );
+
+  // Show setup wizard automatically on first load if no sources are connected
+  useEffect(() => {
+    if (!loading && !anySourceConnected && sources && sources.length > 0) {
+      setFirstTimeSetup(true);
+      setShowSetupWizard(true);
+    }
+  }, [loading, anySourceConnected, sources]);
+
+  const handleSetupComplete = () => {
+    setShowSetupWizard(false);
+    setFirstTimeSetup(false);
+  };
+
+  if (showSetupWizard) {
+    return <SetupWizard onComplete={handleSetupComplete} />;
+  }
+
   return (
     <Card className="w-full bg-white shadow-md">
       <CardHeader>
-        <CardTitle>Engagement Sources</CardTitle>
-        <CardDescription>
-          Connect your engagement sources to enable automated interaction
-          capture
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Engagement Sources</CardTitle>
+            <CardDescription>
+              Connect your engagement sources to enable automated interaction
+              capture
+            </CardDescription>
+          </div>
+          {!firstTimeSetup && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSetupWizard(true)}
+              className="flex items-center gap-1"
+            >
+              <PlusCircle className="h-4 w-4" /> Setup Wizard
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="phone" className="w-full">

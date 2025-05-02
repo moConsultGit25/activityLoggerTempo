@@ -17,7 +17,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { format, subDays } from "date-fns";
 import {
   AlertCircle,
   CalendarIcon,
@@ -31,11 +33,16 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
+import { DateRange } from "react-day-picker";
 import { useInteractions } from "@/hooks/useInteractions";
 import { Interaction } from "@/domain/engagement/types";
 
 const EngagementSummaryPanel = () => {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
+  const [isAllTime, setIsAllTime] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -46,7 +53,7 @@ const EngagementSummaryPanel = () => {
 
   const filteredInteractions = filterInteractions({
     searchQuery,
-    date,
+    dateRange: isAllTime ? undefined : dateRange,
     customer: customerFilter,
     type: typeFilter,
     sentiment: sentimentFilter,
@@ -106,30 +113,52 @@ const EngagementSummaryPanel = () => {
                 <div className="grid gap-4">
                   <div className="space-y-2">
                     <h4 className="font-medium leading-none">Date Range</h4>
-                    <div className="flex gap-2">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? (
-                              format(date, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="all-time"
+                          checked={isAllTime}
+                          onCheckedChange={(checked) => {
+                            setIsAllTime(checked);
+                          }}
+                        />
+                        <Label htmlFor="all-time">All Time</Label>
+                      </div>
+
+                      {!isAllTime && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateRange?.from ? (
+                                dateRange.to ? (
+                                  <>
+                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                    {format(dateRange.to, "LLL dd, y")}
+                                  </>
+                                ) : (
+                                  format(dateRange.from, "LLL dd, y")
+                                )
+                              ) : (
+                                <span>Pick a date range</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              initialFocus
+                              mode="range"
+                              defaultMonth={dateRange?.from}
+                              selected={dateRange}
+                              onSelect={setDateRange}
+                              numberOfMonths={2}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">

@@ -81,7 +81,7 @@ export const useInteractions = (
   const filterInteractions = useCallback(
     (filters: {
       searchQuery?: string;
-      date?: Date;
+      dateRange?: { from?: Date; to?: Date };
       customer?: string;
       type?: string;
       sentiment?: string;
@@ -105,15 +105,46 @@ export const useInteractions = (
           return false;
         }
 
-        // Apply date filter (exact date match)
-        if (
-          filters.date &&
-          (interaction.date.getDate() !== filters.date.getDate() ||
-            interaction.date.getMonth() !== filters.date.getMonth() ||
-            interaction.date.getFullYear() !== filters.date.getFullYear())
-        ) {
-          return false;
+        // Apply date range filter if not set to "All Time"
+        if (filters.dateRange) {
+          const { from, to } = filters.dateRange;
+
+          // If both from and to dates are provided, check if interaction date is within range
+          if (from && to) {
+            const interactionDate = new Date(interaction.date);
+            // Set time to midnight for consistent comparison
+            const fromDate = new Date(from);
+            fromDate.setHours(0, 0, 0, 0);
+
+            const toDate = new Date(to);
+            toDate.setHours(23, 59, 59, 999);
+
+            if (interactionDate < fromDate || interactionDate > toDate) {
+              return false;
+            }
+          }
+          // If only from date is provided, check if interaction date is after from date
+          else if (from) {
+            const interactionDate = new Date(interaction.date);
+            const fromDate = new Date(from);
+            fromDate.setHours(0, 0, 0, 0);
+
+            if (interactionDate < fromDate) {
+              return false;
+            }
+          }
+          // If only to date is provided, check if interaction date is before to date
+          else if (to) {
+            const interactionDate = new Date(interaction.date);
+            const toDate = new Date(to);
+            toDate.setHours(23, 59, 59, 999);
+
+            if (interactionDate > toDate) {
+              return false;
+            }
+          }
         }
+        // If filters.dateRange is undefined, it means "All Time" is selected, so no date filtering
 
         // Apply customer filter
         if (
