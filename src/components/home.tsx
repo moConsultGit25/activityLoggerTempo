@@ -8,7 +8,7 @@ import EngagementSummaryPanel from "./dashboard/EngagementSummaryPanel";
 import TranscriptViewer from "./dashboard/TranscriptViewer";
 import DataExportPanel from "./dashboard/DataExportPanel";
 import AnalyticsOverview from "./dashboard/AnalyticsOverview";
-import EngagementSourcesPanel from "./dashboard/EngagementSourcesPanel";
+import EngagementSourcesPanelWrapper from "./dashboard/EngagementSourcesPanelWrapper";
 
 const Home = () => {
   return (
@@ -84,7 +84,7 @@ const Home = () => {
                 <CardTitle>Configure Engagement Sources</CardTitle>
               </CardHeader>
               <CardContent>
-                <EngagementSourcesPanel />
+                <EngagementSourcesPanelWrapper />
               </CardContent>
             </Card>
           </TabsContent>
